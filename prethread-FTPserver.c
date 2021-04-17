@@ -10,11 +10,16 @@
 #include <getopt.h>
 #include <limits.h>
 #include <unistd.h>
+#include <pthread.h>
+#include "micola.h"
 
 #define MAX_PATH 1024 //tamanio maximo de la ruta
 #define SOCKETERROR (-1) // codigo de error de socket
 
-int maximoConexiones, puerto; // conexiones amximas y puerto de entrada
+
+
+
+int maximoConexiones, puerto; // conexiones maximas y puerto de entrada
 
 struct sockaddr_in servidor, cliente; // estructuras del cliente y el servidor
 
@@ -23,6 +28,9 @@ int socketServer, socketAux; // socket principal y socket auxiliar (cliente)
 int clienteLargo,serverLargo; // tamanio del cliente y el servidor sizeof()
 
 char direccionRoot[MAX_PATH]; // ruta del servidor
+
+pthread_t *thread_pool; //pool de hilos a usar
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; //mutex para manejar las estructuras
 
 /* Declaraciones de las funciones */
 int check(int exp, const char* msg);
@@ -33,9 +41,17 @@ void ModoEscucha();
 void ServidorManager();
 void ImprimirAyuda();
 void IniciarServidor(int argc, char **argv);
+void* funcion_hilo(void*arg);
+
+/*Funcion que crea el pool de hilos*/
+void crearHilos(){
+
+    for(int i = 0; i<maximoConexiones;i++ ){
+        pthread_create(&thread_pool[i],NULL,funcion_hilo,NULL);
+    }
 
 
-
+}
 
 /*Funcion para hacer un check de errores de socket
 * ejecuta una instruccion y muestra un mensaje de 
@@ -109,12 +125,36 @@ void ServidorManager(){
         // se verifica que no se pase del maximo de conexiones
         // se ejecuta lo que pida el cliente
 
+        int* pcliente = malloc(sizeof(int));
+        *pcliente = socketAux;
+
+        //se usa el mutex para asegurar que solo un hilo use la cola a la vez
+        pthread_mutex_lock(&mutex);
+        encolar(pcliente);
+        pthread_mutex_unlock(&mutex);
+
     }//fin del ciclo del servidor
 
 }
 
+/* Funcion para ejecutar los comando en cada hilo*/
+void* funcion_hilo(void*arg){
+    while(true){
+        int* pcliente ;
 
+        pthread_mutex_lock(&mutex);
+        pcliente = desencolar();
+        pthread_mutex_unlock(&mutex);
 
+        if(pcliente != NULL){
+            //aca se llama a lo que se va a hacer en el servidor los ls cd put get etc
+            printf("\nconectao pa!!!\n");
+        }
+    }
+    
+}
+
+/*Funcion que imprime el menu de ayuda*/
 void ImprimirAyuda(){
     printf("\n Menu de ayuda\n Argumentos necesarios:");
     printf("\n -n : numero maximo de conexiones soportadas por el servidor");
@@ -122,7 +162,7 @@ void ImprimirAyuda(){
     printf("\n -p : puerto de conexion del servidor\n\n");
 
 }
-
+/*Funcion que arranca el servidor y obtiene los parametros a utilizar*/
 void IniciarServidor(int argc, char **argv){
 
     
@@ -134,29 +174,41 @@ void IniciarServidor(int argc, char **argv){
 	
 		switch (option)
 		{
-			case 'n':
+			case 'n'://numero de conexiones maximas
 				
 				maximoConexiones = charArrayToInt(optarg);
-			case 'w':
+			case 'w':// direccion root del servidor
 				strcpy(direccionRoot, optarg); 
 				
-			case 'p':
+			case 'p':// puerto del servidor
 				
 				puerto = charArrayToInt(optarg);
             
 			}
-        if(option == 'a') {
+        if(option == 'a') {//para solucitar la ayuda
             ImprimirAyuda();
+            exit(1);
         }
 	
 	}
-    if(direccionRoot != NULL && maximoConexiones != 0 && puerto != 0){
+    if( maximoConexiones != 0 && puerto != 0){//verifica que no este vacio para imprimir
 
 	printf("\n Numero de conexiones :%i \n ruta: %s \n puerto: %i \n\n",maximoConexiones,direccionRoot,puerto);
 
-    }
+    //se crea el array para el pool de hilos
+    pthread_t thread_pool_aux[maximoConexiones];
+    thread_pool = &thread_pool_aux[0];
+
 
     ServidorManager();
+
+    }
+    if(maximoConexiones == 0 && puerto == 0){
+
+
+        printf("\nError: Faltan argumentos utilice el argumento -a para recibir ayuda\n");
+    }
+    
 }
 
 
