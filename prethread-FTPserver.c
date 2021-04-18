@@ -29,9 +29,9 @@ int clienteLargo,serverLargo; // tamanio del cliente y el servidor sizeof()
 
 char direccionRoot[MAX_PATH]; // ruta del servidor
 
-char buf[100], command[5];
+char buf[100], command[5], filename[25],*f;
 
-int filehandle, tamanio;
+int filehandle, tamanio, error;
 
 struct stat obj;
 
@@ -213,7 +213,7 @@ void IniciarServidor(int argc, char **argv){
     pthread_t thread_pool_aux[maximoConexiones];
     thread_pool = &thread_pool_aux[0];
 
-
+    chdir(direccionRoot);
     ServidorManager();
 
     }
@@ -228,31 +228,74 @@ void IniciarServidor(int argc, char **argv){
 void* ManejarConexion(int* p_cliente_socket){
 
 
-    recv(*p_cliente_socket, buf, 100, 0);
-    sscanf(buf, "%s", command);
     
+    while(recv(*p_cliente_socket, buf, 100, 0)){
 
-    if(!strcmp(command, "ls")){
-        
-        system("ls >temps.txt");
 
-        stat("temps.txt",&obj);
-        tamanio = obj.st_size;
-        send(*p_cliente_socket, &tamanio, sizeof(int),0);
-        filehandle = open("temps.txt", O_RDONLY);
-        sendfile(*p_cliente_socket,filehandle,NULL,tamanio);
+        sscanf(buf, "%s", command);
         
-        //close(filehandle);
-	}
-    else if(!strcmp(command, "cd")){
-        //sendmsg(*p_cliente_socket,"comando desconocido",0);
-        printf("no se hizo nada");
-        //exit(0);
+
+        if(!strcmp(command, "ls")){
+            
+            system("ls >temps.txt");
+
+            stat("temps.txt",&obj);
+            tamanio = obj.st_size;
+            send(*p_cliente_socket, &tamanio, sizeof(int),0);
+            filehandle = open("temps.txt", O_RDONLY);
+            sendfile(*p_cliente_socket,filehandle,NULL,tamanio);
+            
+            //close(filehandle);
+        }
+        else if(!strcmp(command, "cd")){
+
+            if(chdir(buf+3) == 0){
+
+                error=1;
+
+                send(*p_cliente_socket,&error,sizeof(int),0);
+                
+            }
+            else{
+                error=0;
+                send(*p_cliente_socket,&error,sizeof(int),0);
+            }
+        }
+        else if(!strcmp(command,"put")){
+            error =0;
+            sscanf(buf+strlen(command),"%s",filename);
+            recv(*p_cliente_socket,&tamanio,sizeof(int),0);
+            
+            filehandle = open(filename, O_CREAT | O_EXCL | O_WRONLY, 0666);
+            
+            if(filehandle == -1){
+                printf("\nerror al crear el archivo a guardar\n");
+            }
+            f = malloc(tamanio);
+            recv(*p_cliente_socket,f,tamanio,0);
+            error = write(filehandle,f,tamanio);
+            close(filehandle);
+            send(*p_cliente_socket,&error,sizeof(int),0);
+
+        }
+
+        else if(!strcmp(command,"get")){
+
+            sscanf(buf+strlen(command),"%s",filename);
+            check(filehandle = open(filename,O_RDONLY),
+            "\nError:el archivo no existe en el directorio\n");
+
+            stat(filename,&obj);
+            tamanio = obj.st_size;
+            send(*p_cliente_socket,&tamanio,sizeof(int),0);
+            sendfile(*p_cliente_socket,filehandle,NULL,tamanio);
+            
+
+
+        }
     }
-
     
-    
-    return 0;
+    return 0 ;
 }
 
 
