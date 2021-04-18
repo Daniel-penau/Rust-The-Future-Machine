@@ -29,6 +29,12 @@ int clienteLargo,serverLargo; // tamanio del cliente y el servidor sizeof()
 
 char direccionRoot[MAX_PATH]; // ruta del servidor
 
+char buf[100], command[5];
+
+int filehandle, tamanio;
+
+struct stat obj;
+
 pthread_t *thread_pool; //pool de hilos a usar
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; //mutex para manejar las estructuras
 
@@ -42,6 +48,7 @@ void ServidorManager();
 void ImprimirAyuda();
 void IniciarServidor(int argc, char **argv);
 void* funcion_hilo(void*arg);
+void* ManejarConexion(int* p_cliente_socket);
 
 /*Funcion que crea el pool de hilos*/
 void crearHilos(){
@@ -97,6 +104,8 @@ void ModoEscucha(){
 
 void ServidorManager(){
 
+    crearHilos();
+
     //se crea el socket del server
     CrearSocket();
 
@@ -116,7 +125,7 @@ void ServidorManager(){
         clienteLargo = sizeof(cliente);
 
         check(socketAux = 
-                accept(socketServer,(struct sockaddr*)&cliente,&clienteLargo),
+                accept(socketServer,(struct sockaddr*)&cliente,(socklen_t*)&clienteLargo),
                 "\nError al aceptar conexiones\n");
         printf("\nConectado!\n");
 
@@ -139,7 +148,10 @@ void ServidorManager(){
 
 /* Funcion para ejecutar los comando en cada hilo*/
 void* funcion_hilo(void*arg){
-    while(true){
+    
+    while (true){
+        
+
         int* pcliente ;
 
         pthread_mutex_lock(&mutex);
@@ -149,8 +161,10 @@ void* funcion_hilo(void*arg){
         if(pcliente != NULL){
             //aca se llama a lo que se va a hacer en el servidor los ls cd put get etc
             printf("\nconectao pa!!!\n");
+            ManejarConexion(pcliente);
         }
     }
+    pthread_exit(NULL);
     
 }
 
@@ -209,6 +223,36 @@ void IniciarServidor(int argc, char **argv){
         printf("\nError: Faltan argumentos utilice el argumento -a para recibir ayuda\n");
     }
     
+}
+
+void* ManejarConexion(int* p_cliente_socket){
+
+
+    recv(*p_cliente_socket, buf, 100, 0);
+    sscanf(buf, "%s", command);
+    
+
+    if(!strcmp(command, "ls")){
+        
+        system("ls >temps.txt");
+
+        stat("temps.txt",&obj);
+        tamanio = obj.st_size;
+        send(*p_cliente_socket, &tamanio, sizeof(int),0);
+        filehandle = open("temps.txt", O_RDONLY);
+        sendfile(*p_cliente_socket,filehandle,NULL,tamanio);
+        
+        //close(filehandle);
+	}
+    else if(!strcmp(command, "cd")){
+        //sendmsg(*p_cliente_socket,"comando desconocido",0);
+        printf("no se hizo nada");
+        //exit(0);
+    }
+
+    
+    
+    return 0;
 }
 
 
