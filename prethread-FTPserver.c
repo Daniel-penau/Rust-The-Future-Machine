@@ -207,14 +207,14 @@ void IniciarServidor(int argc, char **argv){
 	}
     if( maximoConexiones != 0 && puerto != 0){//verifica que no este vacio para imprimir
 
-	printf("\n Numero de conexiones :%i \n ruta: %s \n puerto: %i \n\n",maximoConexiones,direccionRoot,puerto);
+        printf("\n Numero de conexiones :%i \n ruta: %s \n puerto: %i \n\n",maximoConexiones,direccionRoot,puerto);
 
-    //se crea el array para el pool de hilos
-    pthread_t thread_pool_aux[maximoConexiones];
-    thread_pool = &thread_pool_aux[0];
+        //se crea el array para el pool de hilos
+        pthread_t thread_pool_aux[maximoConexiones];
+        thread_pool = &thread_pool_aux[0];
 
-    chdir(direccionRoot);
-    ServidorManager();
+        chdir(direccionRoot);
+        ServidorManager();
 
     }
     if(maximoConexiones == 0 && puerto == 0){
