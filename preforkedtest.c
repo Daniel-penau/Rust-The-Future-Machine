@@ -161,8 +161,9 @@ void ServidorManager(){
             int* pcliente = malloc(sizeof(int));
             *pcliente = socketAux;
             printf("\nconexiones activas> %d",conexionesActivas);
-            pid_t procesoActual = procesPool[conexionesActivas];
+            pid_t procesoActual = procesPool[0];
             printf("\nproceso activo> %d\n",procesoActual);
+            p_cliente_socket = pcliente;
             kill(procesoActual,SIGUSR1);
 
 
