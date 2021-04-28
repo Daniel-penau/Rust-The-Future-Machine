@@ -13,6 +13,9 @@
 #include <pthread.h>
 #include "micola.h"
 
+
+
+
 #define MAX_PATH 1024 //tamanio maximo de la ruta
 #define SOCKETERROR (-1) // codigo de error de socket
 
@@ -33,6 +36,8 @@ char buf[100], command[5], filename[25],*f;
 
 int filehandle, tamanio, error;
 
+int conexionesActivas = 0, enEspera = 0;
+
 struct stat obj;
 
 pthread_t *thread_pool; //pool de hilos a usar
@@ -49,6 +54,7 @@ void ImprimirAyuda();
 void IniciarServidor(int argc, char **argv);
 void* funcion_hilo(void*arg);
 void* ManejarConexion(int* p_cliente_socket);
+
 
 /*Funcion que crea el pool de hilos*/
 void crearHilos(){
@@ -121,26 +127,55 @@ void ServidorManager(){
     //Ciclo infinito del servidor 
     while(true){
 
-        printf("\nEsperando Conexiones...\n");
+        
+    
         clienteLargo = sizeof(cliente);
+        if(enEspera == 0 ){
+            printf("\nEsperando Conexiones...\n");
 
-        check(socketAux = 
+            check(socketAux = 
                 accept(socketServer,(struct sockaddr*)&cliente,(socklen_t*)&clienteLargo),
                 "\nError al aceptar conexiones\n");
-        printf("\nConectado!\n");
+        }
+        
+        
+        
 
-        // Aca va lo que sea que haga el servidor 
-        // se crean los hilos
-        // se verifica que no se pase del maximo de conexiones
-        // se ejecuta lo que pida el cliente
+        if(conexionesActivas < maximoConexiones){ 
+            enEspera = 0;
+            printf("\nConectado!\n");
+            conexionesActivas++;
+            send(socketAux,"\nConectado\n",24,0);
 
-        int* pcliente = malloc(sizeof(int));
-        *pcliente = socketAux;
+            // Aca va lo que sea que haga el servidor 
+            // se crean los hilos
+            // se verifica que no se pase del maximo de conexiones
+            // se ejecuta lo que pida el cliente
 
-        //se usa el mutex para asegurar que solo un hilo use la cola a la vez
-        pthread_mutex_lock(&mutex);
-        encolar(pcliente);
-        pthread_mutex_unlock(&mutex);
+            int* pcliente = malloc(sizeof(int));
+            *pcliente = socketAux;
+
+            //se usa el mutex para asegurar que solo un hilo use la cola a la vez
+            pthread_mutex_lock(&mutex);
+            encolar(pcliente);
+            pthread_mutex_unlock(&mutex);
+        }
+        else{
+            int cola = conexionesActivas-maximoConexiones+1;
+            char mensaje[100] = "\nMaximo de conexiones superado su posicion en cola es ";
+            char buffer[3];
+            sprintf(buffer,"%d\n",cola);
+
+            send(socketAux,strcat(mensaje,buffer),100,0);
+
+            if(enEspera == 0){
+                printf("\nServidor sobrecargado\n"); 
+            }
+            enEspera = 1;
+            
+            
+
+        }
 
     }//fin del ciclo del servidor
 
@@ -160,8 +195,9 @@ void* funcion_hilo(void*arg){
 
         if(pcliente != NULL){
             //aca se llama a lo que se va a hacer en el servidor los ls cd put get etc
-            printf("\nconectao pa!!!\n");
+            
             ManejarConexion(pcliente);
+            conexionesActivas--;
         }
     }
     pthread_exit(NULL);

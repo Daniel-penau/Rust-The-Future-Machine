@@ -19,9 +19,9 @@ struct sockaddr_in server;
 
 int socketServer;
 
-char buf[100], *f, filename[25];
+char buf[100], *f, filename[25], mensajeServer[100];
 
-int size, status;
+int size, status,respuesta;
 
 int filehandle;
 struct stat obj;
@@ -66,14 +66,26 @@ int main(int argc, char *argv[])
     //printf("%s",argv[1]);
     CrearSocket();
     server.sin_family = AF_INET;
-    server.sin_port = 80;
+    server.sin_port = 20; //ftp standart port 20 o 21 para autenticarse
 
     memcpy(&server.sin_addr, &inaddr, sizeof(inaddr));
     Conectar();
-
+    respuesta = recv(socketServer,mensajeServer,100,0);
+    mensajeServer[respuesta] = '\0';
+    printf("\nRespuesta del servido> %s",mensajeServer);
+    while(strcmp(mensajeServer,"\nConectado\n")){
+        
+        //system("clear");
+        respuesta = recv(socketServer,mensajeServer,100,0);
+        mensajeServer[respuesta] = '\0';
+        
+        //printf("\nRespuesta del servido> %s",mensajeServer);
+    }
     for(int i = 2; i<argc;i++){
         
         printf("\n argumento > %s",argv[i]);
+
+        
 
         if(!strcmp( argv[i] ,"ls")){
 
