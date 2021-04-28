@@ -32,9 +32,9 @@ int conexionesActivas = 0,enEspera = 0;
 
 pid_t * procesPool;
 
-int* p_cliente_socket;
 
-void ManejarConexion(int signum);
+
+void ManejarConexion(int* p_cliente_socket);
 int check(int exp, const char* msg);
 int charArrayToInt(char *pArray);
 void CrearProcesos();
@@ -99,28 +99,26 @@ void ModoEscucha(){
     check(listen(socketServer,1),"\nError al entrar en modo escucha\n");
 }
 
-void FuncionProceso(int* pcliente, pid_t procesoActual,int signal){
+void FuncionProceso(int* pcliente, pid_t procesoActual){
 
-    printf("\nHaciendo funcion!\n");
+    
     if(pcliente != NULL){
             //aca se llama a lo que se va a hacer en el servidor los ls cd put get etc
-            p_cliente_socket = pcliente;
-            kill(procesoActual,SIGUSR1);
+            
+            ManejarConexion(pcliente);
             conexionesActivas--;
         }
-        printf("\nHacie funcion!\n");
+        
 
 }
 
-void sig_handler(int signum){
-    printf("Inside handler function\n");
-}
+
 
 void ServidorManager(){
     //crear procesos
-    printf("\nantes de crear p\n");
+    
     CrearProcesos();
-    printf("\ndespues de crear p\n");
+    
     //se crea el socket del server
     CrearSocket();
 
@@ -133,7 +131,7 @@ void ServidorManager(){
     //se coloca el servidor en modo escucha
     ModoEscucha();
 
-    signal(SIGUSR1, sig_handler);
+    
 
     while(true){
 
@@ -160,11 +158,11 @@ void ServidorManager(){
 
             int* pcliente = malloc(sizeof(int));
             *pcliente = socketAux;
-            printf("\nconexiones activas> %d",conexionesActivas);
-            pid_t procesoActual = procesPool[0];
-            printf("\nproceso activo> %d\n",procesoActual);
-            p_cliente_socket = pcliente;
-            kill(procesoActual,SIGUSR1);
+            
+            pid_t procesoActual = procesPool[conexionesActivas-1];
+            
+            
+            FuncionProceso(pcliente,procesoActual);
 
 
         }
@@ -249,7 +247,7 @@ void IniciarServidor(int argc, char *argv[]){
 	
 }
 
-void ManejarConexion(int signum){
+void ManejarConexion(int* p_cliente_socket){
 
 
     

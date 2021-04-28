@@ -1,128 +1,54 @@
-#include <stdio.h>
-#include <getopt.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <sys/socket.h>
-#include <sys/shm.h>
-#include <sys/wait.h>
-#include <sys/types.h>
 #include <arpa/inet.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/sendfile.h>
-#include <limits.h>
-#include <fcntl.h>
 #include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/sendfile.h>
+#include <fcntl.h>
+#include <getopt.h>
+#include <limits.h>
+#include <unistd.h>
+#include<signal.h>
 
 
 
 #define MAX_PATH 1024 //tamanio maximo de la ruta
-#define FILE_KEY "/bin/ls"//espaciod e memoria compartida
-#define KEY_ACTIVE_PROCESS 202 //llave para la memoria compartida
-#define KEY_INCOMING_CONNECTION 105 //llave de proceso entrante 
 #define SOCKETERROR (-1) // codigo de error de socket
 
 
-
-pid_t pidFork;
-int * procesosHijos;
+struct sockaddr_in servidor, cliente;
+int maximoConexiones, puerto; // conexiones maximas y puerto de entrada
 char buf[100], command[5], filename[25],*f;
-int puerto;
-int maximo;
-int idMemCompProcActivo;
-int idMemConexEntrante;
-int *procesosActivos;
-int coneccionEntrante;
-int socketServer;
-int numeroProceso;
-int clienteLargo ;
-struct sockaddr_in server, cliente;
-
-struct stat obj;
-
 int filehandle, tamanio, error;
+struct stat obj;
+char direccionRoot[MAX_PATH]; // ruta del servidor
+
+int socketServer, socketAux; // socket principal y socket auxiliar (cliente)
+
+int clienteLargo,serverLargo; // tamanio del cliente y el servidor sizeof()
+int conexionesActivas = 0,enEspera = 0;
+
+pid_t * procesPool;
 
 
 
-void* ManejarConexion(int* p_cliente_socket);
+void ManejarConexion(int* p_cliente_socket);
 int check(int exp, const char* msg);
-
-//Funcion que transforma un strong a un int
-int charArrayToInt(char *pArray)
-{
-	return atoi(pArray);
-}
-
-
-//Verfica que hayan procesos activos
-int activeProcess()
-{
-	int count = 0;
-	for(int i = 0; i < maximo; i++)
-	{
-		if(*(procesosActivos + i) == 1)
-		{
-			count++;
-		}
-	}
-	return count;
-}
+int charArrayToInt(char *pArray);
+void CrearProcesos();
+void CrearSocket();
+void BindSocket();
+void ModoEscucha();
+void ServidorManager();
+void ImprimirAyuda();
+void IniciarServidor(int argc, char **argv);
 
 
-//Verifica que los procesos estan disponibles para utilizarse
-int verificarDisponibles(){
-	
-	int contador =-1;
-	for (int i = 0; i<maximo; i++){
-		if(procesosActivos[i] == 0 ){
-			contador = i;
-			
-		}
-		
-	}
-	return contador;
-}
-
-
-//Pone el bind al socket
-void bindSocket(){
-	
-	//Datos iniciales
-	server.sin_family = AF_INET; //TCP/IP
-	server.sin_port = 20; //Conversion necesaria
-	server.sin_addr.s_addr = INADDR_ANY; // Cualquiera puede conectarse
-	bzero(&(server.sin_zero), 8);
-
-	if(bind(socketServer, (struct sockaddr*) &server, sizeof(server)) == -1){
-		printf("Error al activar le puerto\n");
-		exit(-1);
-	}else{
-		printf("Socket del server asociado...\n");
-	}
-}
-
-//Función que pone el socket del server en modo escucha
-void escuchar(){
-	int maxConexiones = 1024;
-	if(listen(socketServer, maxConexiones) == -1){
-		printf("Error en la escucha\n");
-		exit(-1);
-	}else{
-		printf("Socket puesto en modo escucha...\n");
-	}
-	
-}
-
-
-//Limpia los procesos usa vez se a dejado de utilizar
-void llenardeZero(){
-	for(int i = 0; i < maximo-1; i++)
-	{
-		procesosActivos[i] = 0;
-	}
-}
-
+/*Funcion para hacer un check de errores de socket
+* ejecuta una instruccion y muestra un mensaje de 
+* error si falla */
 int check(int exp, const char* msg){
 
     if(exp == SOCKETERROR){
@@ -132,152 +58,196 @@ int check(int exp, const char* msg){
     return exp;
 }
 
-//Aceptas y maneja las solicitudes 
-void AceptarConexiones(){
-	
-	if(pidFork != 0){
-		
-		socketServer = socket(AF_INET, SOCK_STREAM, 0);
-		if(socketServer == -1){
-			
-			printf("Error al crear el socket del server");
-		}
-		
-		bindSocket();
-		
-		escuchar();
-		printf("\naqui1\n");
-		llenardeZero();
-		printf("\naqui2\n");
-		while(1){
-			clienteLargo = sizeof(cliente);
-			coneccionEntrante = accept(socketServer,(struct sockaddr*)&cliente,(socklen_t*)&clienteLargo);
-			printf("conexion recibida\n");
-			
-			if(coneccionEntrante == -1){
-				printf("Error al aceptar conexion");
-			}
-			else{
-				
-				int procesoDisponible = verificarDisponibles();
-				printf("\nverifica %d\n",procesoDisponible);
-				if(procesoDisponible >= 0){
-					
-					procesosActivos[procesoDisponible]  =1;
-					
-					send(coneccionEntrante,"me conecte a la vara",24,0);
-					ManejarConexion(coneccionEntrante);
-					
-				}
-				else{
-					printf("Error Se exedio la carga del servidor\n");
-					char *mensajeError = "Servidor sobre cargado";
-					send(coneccionEntrante,mensajeError,strlen(mensajeError),0);
-					shutdown(coneccionEntrante,2);
-					close(coneccionEntrante);
-					printf("conexion al proceso cerrada\n ");
-					
-				}
-				
-				
-				
-			}
-		}
-	}
-	
-	else{
-		
-		while(1){
-			if(*(procesosActivos+ numeroProceso) == 1){
-				coneccionEntrante = 0;
-				//int actvProc = activeProcess();
-				//aqui se llama a la funcion que se va a hacer
-				
-				shutdown(coneccionEntrante,2);
-				close(coneccionEntrante);
-				printf("conexion al proceso ya atendida y cerrada");
-				*(procesosActivos + numeroProceso) =0;
-			}
-			
-			
-		}
-		
-	}
-	
+int charArrayToInt(char *pArray){
+	return atoi(pArray);
+}
+void CrearProcesos(){
+
+    for(int i = 0; i<maximoConexiones;i++ ){
+        procesPool[i] = fork();
+        if(procesPool[i]<0){
+            printf("\nError al crear proceso\n");
+        }
+        else if(procesPool[i] == 0){
+
+            pause();  
+        }
+        
+    }
 }
 
-//Crear los procesos indicados
-void StartPreForkServer(){
-	
-	int procesosCont = 0;
-	
-	pidFork = -1;
-	
-	procesosHijos = malloc(maximo * sizeof(int));
-	while(procesosCont < maximo){
-		
-		pidFork = fork();
-		if(pidFork == 0){
-			break;
-		}
-		else{
-			procesosHijos[procesosCont] = pidFork;
-			procesosCont++;
-			waitpid(-1, NULL, WNOHANG);
-			
-		}
-		printf("\npid: %i\n",pidFork);
-	}
-	
-	int llaveProcesoActivo;
-	check(llaveProcesoActivo = ftok(FILE_KEY, KEY_ACTIVE_PROCESS),
-	"\nerror al crear la key de memoria\n");
+void CrearSocket(){
+    
+    
+    check((socketServer = socket(AF_INET, SOCK_STREAM, 0)),
+    "\nFallo la creacion del socket del servidor\n");
+    
+    printf("\nSocket del servidor creado correctamente\n");
 
-	int llaveProcesoEntrante = ftok(FILE_KEY, KEY_INCOMING_CONNECTION);
-	idMemCompProcActivo = shmget(llaveProcesoActivo, sizeof(int) * (maximo), 0777 | IPC_CREAT );
-	if(idMemCompProcActivo == -1){
-		printf("\nerror1\n");
-	}
-	idMemConexEntrante = shmget(llaveProcesoEntrante, sizeof(int), 0777 | IPC_CREAT );
-	procesosActivos = shmat(idMemCompProcActivo, NULL, 0);
-	coneccionEntrante = shmat(idMemConexEntrante, NULL, 0);
-	AceptarConexiones();
-	
+}
+
+/*Funcion que enlaza el socket del servidor*/
+void BindSocket(){
+    
+    check(bind(socketServer,(struct sockaddr*)&servidor,sizeof(servidor)),
+    "\nError haciendo el binding del socket del servidor\n");
+}
+
+/*Funcion que establece el servidor para escuchar conxiones*/
+void ModoEscucha(){
+    
+    check(listen(socketServer,1),"\nError al entrar en modo escucha\n");
+}
+
+void FuncionProceso(int* pcliente, pid_t procesoActual){
+
+    
+    if(pcliente != NULL){
+            //aca se llama a lo que se va a hacer en el servidor los ls cd put get etc
+            
+            ManejarConexion(pcliente);
+            conexionesActivas--;
+        }
+        
+
+}
+
+
+
+void ServidorManager(){
+    //crear procesos
+    
+    CrearProcesos();
+    
+    //se crea el socket del server
+    CrearSocket();
+
+    //se inicializa la estructura del servidor
+    servidor.sin_port = puerto;
+    servidor.sin_addr.s_addr = INADDR_ANY;
+    servidor.sin_family = AF_INET;
+    //se hace el enlace del socket
+    BindSocket();
+    //se coloca el servidor en modo escucha
+    ModoEscucha();
+
+    
+
+    while(true){
+
+        
+    
+        clienteLargo = sizeof(cliente);
+        if(enEspera == 0 ){
+            printf("\nEsperando Conexiones...\n");
+
+            check(socketAux = 
+                accept(socketServer,(struct sockaddr*)&cliente,(socklen_t*)&clienteLargo),
+                "\nError al aceptar conexiones\n");
+        }
+        if(conexionesActivas < maximoConexiones){ 
+            enEspera = 0;
+            printf("\nConectado!\n");
+            conexionesActivas++;
+            send(socketAux,"\nConectado\n",24,0);
+
+            // Aca va lo que sea que haga el servidor 
+            // se crean los hilos
+            // se verifica que no se pase del maximo de conexiones
+            // se ejecuta lo que pida el cliente
+
+            int* pcliente = malloc(sizeof(int));
+            *pcliente = socketAux;
+            
+            pid_t procesoActual = procesPool[conexionesActivas-1];
+            
+            
+            FuncionProceso(pcliente,procesoActual);
+
+
+        }
+        else{
+            int cola = conexionesActivas-maximoConexiones+1;
+            char mensaje[100] = "\nMaximo de conexiones superado su posicion en cola es ";
+            char buffer[3];
+            sprintf(buffer,"%d\n",cola);
+
+            send(socketAux,strcat(mensaje,buffer),100,0);
+
+            if(enEspera == 0){
+                printf("\nServidor sobrecargado\n"); 
+            }
+            enEspera = 1;
+            
+            
+
+        }
+    
+    
+    }
+
+}
+
+/*Funcion que imprime el menu de ayuda*/
+void ImprimirAyuda(){
+    printf("\n Menu de ayuda\n Argumentos necesarios:");
+    printf("\n -n : numero maximo de conexiones soportadas por el servidor");
+    printf("\n -w : direccion ftp-root del servidor ");
+    printf("\n -p : puerto de conexion del servidor\n\n");
+
 }
 
 //Puene a funcionar el servidor
 void IniciarServidor(int argc, char *argv[]){
 	
 	
-	char direccionRoot[MAX_PATH];
-	
 	
 	int option ;
-	while((option = getopt(argc,argv,"n:w:p:h")) != -1)
+
+	while((option = getopt(argc,argv,"n:w:p:a")) != -1)
 	{
 	
 		switch (option)
 		{
-			case 'n':
+			case 'n'://numero de conexiones maximas
 				
-				maximo = charArrayToInt(optarg);
-			case 'w':
+				maximoConexiones = charArrayToInt(optarg);
+			case 'w':// direccion root del servidor
 				strcpy(direccionRoot, optarg); 
 				
-			case 'p':
+			case 'p':// puerto del servidor
 				
 				puerto = charArrayToInt(optarg);
-				
+            
 			}
+        if(option == 'a') {//para solucitar la ayuda
+            ImprimirAyuda();
+            exit(1);
+        }
 	
 	}
-	printf("\n conexiones :%i \n ruta: %s \n puerto: %i \n",maximo,direccionRoot,puerto);
-	chdir(direccionRoot);
-	StartPreForkServer();
+    if( maximoConexiones != 0 && puerto != 0){//verifica que no este vacio para imprimir
+
+        printf("\n Numero de conexiones :%i \n ruta: %s \n puerto: %i \n\n",maximoConexiones,direccionRoot,puerto);
+
+        //se crea el array para el pool de procesos
+
+        pid_t  poolAux[maximoConexiones];
+        procesPool = &poolAux[0];
+
+        chdir(direccionRoot);
+        ServidorManager();
+
+    }
+    if(maximoConexiones == 0 && puerto == 0){
+
+
+        printf("\nError: Faltan argumentos utilice el argumento -a para recibir ayuda\n");
+    }
 	
 }
 
-void* ManejarConexion(int* p_cliente_socket){
+void ManejarConexion(int* p_cliente_socket){
 
 
     
@@ -347,13 +317,11 @@ void* ManejarConexion(int* p_cliente_socket){
         }
     }
     
-    return 0 ;
+    
 }
-
 
 int main(int argc, char *argv[])
 {
 	IniciarServidor(argc,argv);
 	return 0;
 }
-
