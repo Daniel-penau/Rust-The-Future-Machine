@@ -19,10 +19,11 @@ Los Web Servers comúnmente trabajan en un mínimo de sus capacidades sin embarg
 
 La tarea se implementó en los siguientes ambientes de trabajo:
 
-- Ubuntu en su última	versión como sistema operativo
+- Ubuntu en su última versión como sistema operativo
 - VScode como IDE de desarrollo
-- GCC
-- Python3
+- Clang como compilador
+- Make para la compilaciond e archivos
+- Rust
 
 ## Estructuras de datos usadas y funciones
 ### Pre Forked Server
@@ -33,7 +34,7 @@ Esta función se encarga de tomar los parámetros del input y establecer todas l
 
 #### StartPreForkServer()
 
-Esta función se encarga de crear los procesos, mediante fork y punteros, que se van a utilizar , además de establecer sus espacios de memoria y memoria compartida.
+Esta función se encarga de crear los procesos, mediante fork y punteros, que se van a utilizar.
 
 #### AceptarConexiones()
 
