@@ -1,0 +1,11 @@
+/home/daniel/Documents/documentos_U/SO/Progras/Rust-The-Future-Machine/cliente/ftpclient/target/debug/deps/socket2-ab00f1b78f2f657c.rmeta: /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/lib.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sockaddr.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/socket.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sockref.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sys/unix.rs
+
+/home/daniel/Documents/documentos_U/SO/Progras/Rust-The-Future-Machine/cliente/ftpclient/target/debug/deps/libsocket2-ab00f1b78f2f657c.rlib: /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/lib.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sockaddr.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/socket.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sockref.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sys/unix.rs
+
+/home/daniel/Documents/documentos_U/SO/Progras/Rust-The-Future-Machine/cliente/ftpclient/target/debug/deps/socket2-ab00f1b78f2f657c.d: /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/lib.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sockaddr.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/socket.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sockref.rs /home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sys/unix.rs
+
+/home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/lib.rs:
+/home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sockaddr.rs:
+/home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/socket.rs:
+/home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sockref.rs:
+/home/daniel/.cargo/registry/src/github.com-1ecc6299db9ec823/socket2-0.4.0/src/sys/unix.rs:
